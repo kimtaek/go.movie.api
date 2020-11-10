@@ -1,0 +1,203 @@
+kind: pipeline
+type: kubernetes
+name: build
+
+steps:
+  - name: develop
+    image: plugins/ecr:latest
+    settings:
+      access_key:
+        from_secret: access_key
+      secret_key:
+        from_secret: secret_key
+      region:
+        from_secret: region
+      registry:
+        from_secret: registry
+      repo:
+        from_secret: repository
+      tags: [ 'develop', '${DRONE_COMMIT:0:8}' ]
+      dockerfile: Dockerfile
+    when:
+      branch:
+        include:
+          - feature/*
+          - develop
+
+  - name: production
+    image: plugins/ecr:latest
+    settings:
+      access_key:
+        from_secret: access_key
+      secret_key:
+        from_secret: secret_key
+      region:
+        from_secret: region
+      registry:
+        from_secret: registry
+      repo:
+        from_secret: repository
+      tags: [ 'latest', '${DRONE_COMMIT:0:8}' ]
+      dockerfile: Dockerfile
+    when:
+      branch:
+        include:
+          - master
+
+trigger:
+  event:
+    exclude:
+      - promote
+      - pull_request
+
+---
+kind: pipeline
+type: kubernetes
+name: deploy
+
+clone:
+  disable: true
+
+steps:
+  - name: develop
+    image: kimtaek/eks
+    settings:
+      server:
+        from_secret: server
+      cert:
+        from_secret: cert
+      token:
+        from_secret: token
+      namespace: develop
+      deployment:
+        from_secret: deployment
+      container:
+        from_secret: container
+      registry:
+        from_secret: registry
+      repository:
+        from_secret: repository
+      tag: ${DRONE_COMMIT:0:8}
+      watch: true
+    when:
+      branch:
+        include:
+          - feature/*
+          - develop
+
+  - name: production
+    image: kimtaek/eks
+    settings:
+      server:
+        from_secret: server
+      cert:
+        from_secret: cert
+      token:
+        from_secret: token
+      namespace: production
+      deployment:
+        from_secret: deployment
+      container:
+        from_secret: container
+      registry:
+        from_secret: registry
+      repository:
+        from_secret: repository
+      tag: ${DRONE_COMMIT:0:8}
+      watch: true
+    when:
+      branch:
+        include:
+          - master
+
+  - name: notification
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack
+      channel: deployment
+      username: Drone
+      template: >
+        {{#if build.pull }}
+          *{{#success build.status}}✔{{ else }}✘{{/success}} {{ uppercasefirst build.status }}*: <https://github.com/{{ repo.owner }}/{{ repo.name }}/pull/{{ build.pull }}|Pull Request #{{ build.pull }}>
+        {{else}}
+          *{{#success build.status}}✔{{ else }}✘{{/success}} {{ uppercasefirst build.status }}: Build #{{ build.number }}* (type: `{{ build.event }}`)
+        {{/if}}
+        Commit: <https://github.com/{{ repo.owner }}/{{ repo.name }}/commit/{{ build.commit }}|{{ truncate build.commit 8 }}>
+        Branch: <https://github.com/{{ repo.owner }}/{{ repo.name }}/commits/{{ build.branch }}|{{ build.branch }}>
+        Author: {{ build.author }}
+        <{{ build.link }}|Visit build page ↗>
+    depends_on: [ develop, production ]
+
+trigger:
+  status:
+    - success
+  event:
+    exclude:
+      - promote
+      - pull_request
+
+depends_on:
+  - build
+
+---
+kind: pipeline
+type: kubernetes
+name: promote
+
+clone:
+  disable: true
+
+steps:
+  - name: promote develop
+    image: kimtaek/eks
+    settings:
+      server:
+        from_secret: server
+      cert:
+        from_secret: cert
+      token:
+        from_secret: token
+      namespace: develop
+      deployment:
+        from_secret: deployment
+      container:
+        from_secret: container
+      registry:
+        from_secret: registry
+      repository:
+        from_secret: repository
+      tag: ${DRONE_COMMIT:0:8}
+      watch: true
+    when:
+      branch:
+        include:
+          - develop
+          - master
+
+  - name: notification
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack
+      channel: deployment
+      username: Drone
+      template: >
+        {{#if build.pull }}
+          *{{#success build.status}}✔{{ else }}✘{{/success}} {{ uppercasefirst build.status }}*: <https://github.com/{{ repo.owner }}/{{ repo.name }}/pull/{{ build.pull }}|Pull Request #{{ build.pull }}>
+        {{else}}
+          *{{#success build.status}}✔{{ else }}✘{{/success}} {{ uppercasefirst build.status }}: Build #{{ build.number }}* (type: `{{ build.event }}`)
+        {{/if}}
+        Commit: <https://github.com/{{ repo.owner }}/{{ repo.name }}/commit/{{ build.commit }}|{{ truncate build.commit 8 }}>
+        Branch: <https://github.com/{{ repo.owner }}/{{ repo.name }}/commits/{{ build.branch }}|{{ build.branch }}>
+        Author: {{ build.author }}
+        <{{ build.link }}|Visit build page ↗>
+    depends_on: [ promote develop, promote production ]
+
+trigger:
+  event:
+    - promote
+  target:
+    include:
+      - develop
+      - production
