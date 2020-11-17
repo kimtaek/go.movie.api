@@ -4,9 +4,9 @@ import "github.com/kimtaek/gamora/pkg/db"
 
 type Movie struct {
 	db.Model
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	Actors      []*Actor `json:"actors" gorm:"PRELOAD:false"`
+	Title       string   `form:"title" json:"title"`
+	Description string   `form:"description" json:"description"`
+	Actors      []*Actor `json:"actors" gorm:"many2many:movie_actors;PRELOAD:false"`
 }
 
 // GetMovies get movies
@@ -24,13 +24,21 @@ func GetMoviesWithActors(w *Movie) []*Movie {
 	if err := db.Connection().Where(w).Preload("Actors").Order("`id` DESC").Find(&m).Error; err == nil {
 		return m
 	}
-	return nil
+	return m
+}
+
+// GetMoviesWithActorsPaginate
+func GetMoviesWithActorsPaginate(w *Movie, pp *db.PaginationParam) *db.Pagination {
+	var m []*Movie
+	d := db.Connection().Where(w).Preload("Actors").Order("`id` DESC").Limit(pp.Limit).Find(&m)
+	pp.DB = d
+	return db.Paginate(pp, &m)
 }
 
 // GetMovieByID get single movie by id
 func GetMovieByID(id uint64) *Movie {
 	var m Movie
-	if err := db.Connection().Where("id = ?", id).First(&m).Error; err == nil {
+	if err := db.Connection().Preload("Actors").Where("id = ?", id).First(&m).Error; err == nil {
 		return &m
 	}
 	return nil

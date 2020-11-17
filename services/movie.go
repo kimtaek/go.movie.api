@@ -2,6 +2,7 @@ package services
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/kimtaek/gamora/pkg/db"
 	"github.com/kimtaek/gamora/pkg/helper"
 	"github.com/kimtaek/gamora/pkg/respond"
 	"movie.api/models"
@@ -13,6 +14,27 @@ import (
 func GetMovies(c *gin.Context) {
 	var source, w = respond.Source{}, models.Movie{}
 	source.Data = models.GetMoviesWithActors(&w)
+	respond.Data(c, &source)
+}
+
+// @Tags movies
+// @Summary 영화 리스트
+// @Router /movies/{id}/paginate [get]
+// @Param   id path string true "*"
+func GetMoviesPaginate(c *gin.Context) {
+	var source, w, paging = respond.Source{}, models.Movie{}, db.PaginationParam{}
+	_ = c.Bind(&paging)
+	source.Data = models.GetMoviesWithActorsPaginate(&w, &paging)
+	respond.Data(c, &source)
+}
+
+// @Tags movies
+// @Summary 영화 배우 리스트
+// @Router /movies/{id}/actors [get]
+// @Param   id path string true "*"
+func GetMovieActors(c *gin.Context) {
+	var source = respond.Source{}
+	source.Data = models.GetMovieByID(helper.String2Int64(c.Param("id"))).Actors
 	respond.Data(c, &source)
 }
 
