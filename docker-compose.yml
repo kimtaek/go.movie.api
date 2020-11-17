@@ -3,12 +3,22 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.local
+      target: builder
+    volumes:
+      - ./:/go/src
+    command: air
     container_name: kt_youha_movie_api
     environment:
-      MYSQL_DATABASE: "homestead"
+     - MYSQL_DATABASE=homestead
+     - MYSQL_HOST=mysql
     ports:
       - 8080:8080
+      - 2345:2345
+    security_opt:
+      - apparmor:unconfined
+    cap_add:
+      - SYS_PTRACE
     depends_on:
       mysql:
         condition: service_healthy

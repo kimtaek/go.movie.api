@@ -20,6 +20,11 @@ func RegisterRouter(r *gin.Engine) {
 	movies := r.Group("movies")
 	{
 		movies.GET("", services.GetMovies)
+		movies.GET(":id/paginate", services.GetMovies)
+		//movies.GET(":id/actors", services.GetMovies)
+		//movies.GET(":id/actors/:id/paginate", services.GetMovies)
+		//movies.GET(":id/actors/:id", services.GetMovies)
+		movies.GET(":id", services.GetMovie)
 		movies.POST("", services.PostMovie)
 		movies.PUT(":id", services.PutMovie)
 		movies.DELETE(":id", services.DeleteMovie)

@@ -1,0 +1,33 @@
+FROM golang:1.14-alpine3.11 as builder
+LABEL "name"="movie.api"
+LABEL "maintainer"="kimtaek <jinze1991@icloud.com>"
+LABEL "version"="1.0.0"
+
+ENV GO111MODULE=off GOOS=linux GOARCH=amd64 CGO_ENABLED=0
+
+WORKDIR /go/src
+COPY . .
+RUN set -eux && \
+  apk update && \
+  apk add --no-cache git curl && \
+  go get -u github.com/cosmtrek/air && \
+  go build -o /go/bin/air github.com/cosmtrek/air && \
+  go get -u github.com/go-delve/delve/cmd/dlv && \
+  go build -o /go/bin/dlv github.com/go-delve/delve/cmd/dlv
+
+ENV GO111MODULE on
+
+RUN ls -al
+RUN set -eux && \
+  go build -o main build/main.go
+
+FROM alpine:3.11
+WORKDIR /go/src
+COPY --from=builder /go/src/build .
+RUN set -x && \
+  addgroup go && \
+  adduser -D -G go go && \
+  chown -R go:go /go/src/main
+
+ENTRYPOINT ["/go/src/main"]
+HEALTHCHECK --start-period=2s --interval=10s --timeout=5s CMD ["/go/src/healthz"]
