@@ -2,6 +2,8 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/swaggo/gin-swagger/swaggerFiles"
 	"movie.api/middleware"
 	"movie.api/services"
 	"net/http"
@@ -17,6 +19,12 @@ func RegisterRouter(r *gin.Engine) {
 		c.JSON(200, gin.H{"code": http.StatusOK, "message": "Hi. :D"})
 	})
 
+	r.GET("docs", func(c *gin.Context) {
+		c.Redirect(http.StatusTemporaryRedirect, "/docs/index.html")
+	})
+	r.GET("docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// gorm
 	movies := r.Group("movies")
 	{
 		movies.GET("", services.GetMovies)
@@ -36,5 +44,17 @@ func RegisterRouter(r *gin.Engine) {
 		//actors.POST("", services.PostActor)
 		//actors.PUT(":id", services.PutActor)
 		//actors.DELETE(":id", services.DeleteActor)
+	}
+
+	// ent orm
+	users := r.Group("users")
+	{
+		users.GET("", services.GetUsers)
+		users.GET(":id/paginate", services.GetUsersPaginate)
+		users.GET(":id/actors", services.GetUserActors)
+		users.GET(":id", services.GetUser)
+		users.POST("", services.PostUser)
+		users.PUT(":id", services.PutUser)
+		users.DELETE(":id", services.DeleteUser)
 	}
 }

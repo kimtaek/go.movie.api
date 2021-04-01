@@ -1,0 +1,6 @@
+!schema
+!mixin
+!generate.go
+!connector.go
+!.gitignore
+*

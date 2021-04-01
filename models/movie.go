@@ -3,7 +3,7 @@ package models
 import "github.com/kimtaek/gamora/pkg/db"
 
 type Movie struct {
-	db.Model
+	Model
 	Title       string   `form:"title" json:"title"`
 	Description string   `form:"description" json:"description"`
 	Actors      []*Actor `json:"actors" gorm:"many2many:movie_actors;PRELOAD:false"`

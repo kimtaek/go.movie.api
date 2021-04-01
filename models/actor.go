@@ -3,7 +3,7 @@ package models
 import "github.com/kimtaek/gamora/pkg/db"
 
 type Actor struct {
-	db.Model
+	Model
 	Name     string `json:"name"`
 	Gender   string `json:"gender"`
 	Birthday string `json:"birthday"`
